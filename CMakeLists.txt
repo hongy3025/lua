@@ -9,17 +9,16 @@ endif ()
 
 project(lua)
 
-if ( WIN32 AND NOT CYGWIN )
-  option ( LUA_USE_WINDOWS "Windows specific build." ON )
-  # Posix systems (incl. Cygwin)
-else ( )
-  option ( LUA_USE_POSIX "Use POSIX features." ON )
-  option ( LUA_USE_DLOPEN "Use dynamic linker to load modules." ON )
-  # Apple and Linux specific
-  if ( LINUX OR APPLE )
-    option ( LUA_USE_AFORMAT "Assume 'printf' handles 'aA' specifiers" ON )
-  endif ( )
-endif ( )
+if (WIN32 AND NOT CYGWIN)
+  add_definitions(-DLUA_USE_WINDOWS=1)
+else ()
+  if (UNIX)
+    add_definitions(-DLUA_USE_LINUX=1)
+  endif()
+  if (UNIX OR APPLE)
+    add_definitions(-DLUA_USE_AFORMAT=1)
+  endif()
+endif ()
 
 set(LUA_SRC_PATH src)
 
@@ -34,21 +33,24 @@ include_directories(
 aux_source_directory(${LUA_SRC_PATH} LUA_CORE)
 list(REMOVE_ITEM LUA_CORE ${LUA_SRC_PATH}/lua.c ${LUA_SRC_PATH}/luac.c)
 
-add_library(liblua
-    ${LUA_CORE}
-)
+add_library(liblua ${LUA_CORE})
 
-set(POW_LIBS "")
 include(CheckLibraryExists)
-check_library_exists(m pow "" LIBM)
-if(LIBM)
-    list(APPEND POW_LIBS "m")
+if (UNIX)
+  check_library_exists(m pow "" LIBM)
+  if(LIBM)
+    list(APPEND LIBS m)
+  endif()
+  check_library_exists(dl dlopen "" LIBDL)
+  if(LIBDL)
+    list(APPEND LIBS dl)
+  endif()
 endif()
 
 add_executable(lua ${LUA_SRC_PATH}/lua.c)
-target_link_libraries(lua liblua ${POW_LIBS})
+target_link_libraries(lua liblua ${LIBS})
 
 add_executable(luac ${LUA_SRC_PATH}/luac.c)
-target_link_libraries(luac liblua ${POW_LIBS})
+target_link_libraries(luac liblua ${LIBS})
 
 
